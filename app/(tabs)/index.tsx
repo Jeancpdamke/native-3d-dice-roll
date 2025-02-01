@@ -9,7 +9,7 @@ import CANNON from 'cannon'
  * Constants
  */
 const CAMERA_Y_DISTANCE = 10
-const CAMERA_Z_DISTANCE = 40
+const CAMERA_Z_DISTANCE = 20
 
 export default function HomeScreen() {
   const [text, setText] = React.useState('');
@@ -40,6 +40,9 @@ export default function HomeScreen() {
      * Textures
      */
     const woodTexture = new TextureLoader().load(require('@/assets/textures/wood.jpg'));
+    woodTexture.repeat.set(2, 1);
+    woodTexture.wrapS = THREE.MirroredRepeatWrapping;
+    woodTexture.wrapT = THREE.RepeatWrapping;
     const diceFaceTextures = [
       new TextureLoader().load(require('@/assets/textures/dice/1.jpg')),
       new TextureLoader().load(require('@/assets/textures/dice/2.jpg')),
@@ -95,12 +98,12 @@ export default function HomeScreen() {
 
     // Dice
     const diceGeometry = new THREE.IcosahedronGeometry(1)
-    diceGeometry.scale(3, 3, 3)
+    diceGeometry.scale(1.5, 1.5, 1.5)
     const diceMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 })
     const dice = new THREE.Mesh(diceGeometry, diceMaterial)
 
     dice.castShadow = true
-    dice.position.set(0, 0, 20)
+    dice.position.set(0, 0, 10)
     dice.up.set(0, 0, 1)
     sceneRef.current.add(dice)
 
@@ -284,7 +287,9 @@ export default function HomeScreen() {
         const raycaster = new THREE.Raycaster(rayCasterOrigin, rayCasterDirection)
 
         const intersects = raycaster.intersectObjects(facesGroup.children)
-        setText(`Result: ${intersects[0].object.name}`)
+        if (intersects.length > 0) {
+          setText(`Result: ${intersects[0].object.name}`)
+        }
       }
 
       renderer.render(sceneRef.current, cameraRef.current);
@@ -300,7 +305,8 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1 }}>
       <TouchableOpacity style={{ position: 'absolute', width: '100%', height: '100%', top: 0, bottom: 0, left: 0, right: 0, zIndex: 2, opacity: 0 }} onPress={() => {
-        cannonDiceRef.current?.position.set(0, 0, 20)
+        setText('')
+        cannonDiceRef.current?.position.set(0, 0, 10)
         cannonDiceRef.current?.applyLocalForce(
           new CANNON.Vec3(Math.random() * 20, Math.random() * 20, 0),
           cannonDiceRef.current?.position
