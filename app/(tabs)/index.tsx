@@ -216,6 +216,7 @@ export default function HomeScreen() {
     // Table
     const tableShape = new CANNON.Plane()
     const tableBody = new CANNON.Body({ shape: tableShape })
+    tableBody.position.z += 0.005 // To avoid the z-fighting with the dice
     world.addBody(tableBody)
 
     /**
