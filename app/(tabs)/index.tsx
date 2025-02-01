@@ -2,20 +2,21 @@ import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
 import { Renderer, TextureLoader, THREE } from 'expo-three';
 import React from 'react';
 import { useEffect, useRef } from 'react';
-import { Text, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import CANNON from 'cannon'
 
 /**
  * Constants
  */
-const CAMERA_Y_DISTANCE = 0
-const CAMERA_Z_DISTANCE = 20
+const CAMERA_Y_DISTANCE = 10
+const CAMERA_Z_DISTANCE = 40
 
 export default function HomeScreen() {
   const [text, setText] = React.useState('');
   const timeoutRef = useRef<number>();
   const sceneRef = useRef<THREE.Scene>();
   const cameraRef = useRef<THREE.Camera>();
+  const cannonDiceRef = useRef<CANNON.Body>();
 
 
   useEffect(() => {
@@ -67,7 +68,10 @@ export default function HomeScreen() {
      */
     sceneRef.current = new THREE.Scene();
     sceneRef.current.background = new THREE.Color(0xe0e0e0);
+    gl.createRenderbuffer = (() => ({}));
+
     const renderer = new Renderer({ gl });
+    renderer.shadowMap.enabled = true;
 
     /**
      * Camera
@@ -91,10 +95,12 @@ export default function HomeScreen() {
 
     // Dice
     const diceGeometry = new THREE.IcosahedronGeometry(1)
-    const diceMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0 })
+    diceGeometry.scale(3, 3, 3)
+    const diceMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 })
     const dice = new THREE.Mesh(diceGeometry, diceMaterial)
+
     dice.castShadow = true
-    dice.position.set(0, 0, 10)
+    dice.position.set(0, 0, 20)
     dice.up.set(0, 0, 1)
     sceneRef.current.add(dice)
 
@@ -121,16 +127,18 @@ export default function HomeScreen() {
       const material = new THREE.MeshStandardMaterial({
         map: diceFaceTextures[faceNumber - 1],
         transparent: true,
-        opacity: 0.8,
+        opacity: 0.9,
         side: THREE.DoubleSide,
         metalness: 0.2,
         roughness: 0.5,
       })
+
       const geometry = new THREE.BufferGeometry()
       geometry.setFromPoints([dicePoints[i], dicePoints[i + 1], dicePoints[i + 2]])
       geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
 
       const faceMesh = new THREE.Mesh(geometry, material)
+      faceMesh.castShadow = true
       faceMesh.name = faceName
       facesGroup.add(faceMesh)
     }
@@ -158,12 +166,12 @@ export default function HomeScreen() {
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4)
     directionalLight.castShadow = true
     directionalLight.shadow.mapSize.set(1024, 1024)
-    directionalLight.shadow.camera.far = 25
-    directionalLight.shadow.camera.left = -25
-    directionalLight.shadow.camera.top = 25
-    directionalLight.shadow.camera.right = 25
-    directionalLight.shadow.camera.bottom = -25
-    directionalLight.position.set(0, 0, 20)
+    directionalLight.shadow.camera.far = 50
+    directionalLight.shadow.camera.left = -50
+    directionalLight.shadow.camera.top = 50
+    directionalLight.shadow.camera.right = 50
+    directionalLight.shadow.camera.bottom = -50
+    directionalLight.position.set(0, 0, 40)
     sceneRef.current.add(directionalLight)
 
     /**
@@ -202,16 +210,18 @@ export default function HomeScreen() {
       icosahedronPoints,
       icosahedronFaces
     )
-    const icosahedronBody = new CANNON.Body({ mass: 1 })
-    icosahedronBody.addShape(icosahedronShape)
-    icosahedronBody.position.x = dice.position.x
-    icosahedronBody.position.y = dice.position.y
-    icosahedronBody.position.z = dice.position.z
-    icosahedronBody.applyLocalForce(
+
+    const cannonDice = new CANNON.Body({ mass: 1 })
+    cannonDice.addShape(icosahedronShape)
+    cannonDice.position.x = dice.position.x
+    cannonDice.position.y = dice.position.y
+    cannonDice.position.z = dice.position.z
+    cannonDice.applyLocalForce(
       new CANNON.Vec3(Math.random() * 20, Math.random() * 20, 0),
-      icosahedronBody.position
+      cannonDice.position
     )
-    world.addBody(icosahedronBody)
+    cannonDiceRef.current = cannonDice
+    world.addBody(cannonDiceRef.current)
 
     // Table
     const tableShape = new CANNON.Plane()
@@ -227,14 +237,6 @@ export default function HomeScreen() {
     let previousRotation = new CANNON.Quaternion
     let previousPositionCount = 0
 
-    const areRotationsAlmostEqual = (vector1: CANNON.Quaternion, vector2: CANNON.Quaternion, precision = 0.001): boolean => {
-      const isXInsidePrecision = vector1.x - vector2.x < precision
-      const isYInsidePrecision = vector1.y - vector2.y < precision
-      const isZInsidePrecision = vector1.z - vector2.z < precision
-      const isWInsidePrecision = vector1.w - vector2.w < precision
-      return isXInsidePrecision && isYInsidePrecision && isZInsidePrecision && isWInsidePrecision
-    }
-
     const animate = () => {
       const elapsedTime = clock.getElapsedTime()
       const deltaTime = elapsedTime - oldElapsedTime
@@ -244,35 +246,36 @@ export default function HomeScreen() {
       world.step(1 / 60, deltaTime, 3)
       dice.position.copy(
         new THREE.Vector3(
-          icosahedronBody.position.x,
-          icosahedronBody.position.y,
-          icosahedronBody.position.z
+          cannonDice.position.x,
+          cannonDice.position.y,
+          cannonDice.position.z
         )
       )
       dice.quaternion.copy(
         new THREE.Quaternion(
-          icosahedronBody.quaternion.x,
-          icosahedronBody.quaternion.y,
-          icosahedronBody.quaternion.z,
-          icosahedronBody.quaternion.w,
+          cannonDice.quaternion.x,
+          cannonDice.quaternion.y,
+          cannonDice.quaternion.z,
+          cannonDice.quaternion.w,
         )
       )
 
       // Update camera to follow the dice
       cameraRef.current.position.set(
-        icosahedronBody.position.x,
-        icosahedronBody.position.y - CAMERA_Y_DISTANCE,
+        cannonDice.position.x,
+        cannonDice.position.y - CAMERA_Y_DISTANCE,
         CAMERA_Z_DISTANCE
       )
       cameraRef.current.lookAt(dice.position)
 
       // Check if dice stopped
-      if (areRotationsAlmostEqual(previousRotation, icosahedronBody.quaternion)) {
+      if (areRotationsAlmostEqual(previousRotation, cannonDice.quaternion)) {
         previousPositionCount++
       } else {
-        previousRotation.copy(icosahedronBody.quaternion)
+        previousRotation.copy(cannonDice.quaternion)
         previousPositionCount = 0
       }
+
       const hasDiceStopped = previousPositionCount > 100
 
       if (hasDiceStopped) {
@@ -293,8 +296,16 @@ export default function HomeScreen() {
     animate();
   }
 
+
   return (
     <View style={{ flex: 1 }}>
+      <TouchableOpacity style={{ position: 'absolute', width: '100%', height: '100%', top: 0, bottom: 0, left: 0, right: 0, zIndex: 2, opacity: 0 }} onPress={() => {
+        cannonDiceRef.current?.position.set(0, 0, 20)
+        cannonDiceRef.current?.applyLocalForce(
+          new CANNON.Vec3(Math.random() * 20, Math.random() * 20, 0),
+          cannonDiceRef.current?.position
+        )
+      }} />
       {!!text ? <Text style={{ fontSize: 30, fontWeight: 'bold', margin: 50, position: 'absolute', zIndex: 1 }}>{text}</Text> : null}
       <GLView
         style={{ flex: 1 }}
@@ -305,3 +316,10 @@ export default function HomeScreen() {
 }
 
 
+const areRotationsAlmostEqual = (vector1: CANNON.Quaternion, vector2: CANNON.Quaternion, precision = 0.001): boolean => {
+  const isXInsidePrecision = vector1.x - vector2.x < precision
+  const isYInsidePrecision = vector1.y - vector2.y < precision
+  const isZInsidePrecision = vector1.z - vector2.z < precision
+  const isWInsidePrecision = vector1.w - vector2.w < precision
+  return isXInsidePrecision && isYInsidePrecision && isZInsidePrecision && isWInsidePrecision
+}
