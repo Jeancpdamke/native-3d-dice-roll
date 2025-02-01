@@ -89,14 +89,7 @@ export default function HomeScreen() {
 
     // Dice
     const diceGeometry = new THREE.IcosahedronGeometry(1)
-    const diceMaterial = new THREE.MeshStandardMaterial({
-      map: blueMistTexture,
-      transparent: true,
-      opacity: 0.6,
-      side: THREE.DoubleSide,
-      metalness: 0.2,
-      roughness: 0.5,
-    })
+    const diceMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0 })
     const dice = new THREE.Mesh(diceGeometry, diceMaterial)
     dice.castShadow = true
     dice.position.set(0, 0, 10)
@@ -126,7 +119,7 @@ export default function HomeScreen() {
       const material = new THREE.MeshStandardMaterial({
         map: diceFaceTextures[faceNumber - 1],
         transparent: true,
-        opacity: 0.6,
+        opacity: 0.8,
         side: THREE.DoubleSide,
         metalness: 0.2,
         roughness: 0.5,
