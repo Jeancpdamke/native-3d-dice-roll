@@ -37,6 +37,28 @@ export default function HomeScreen() {
      */
     const blueMistTexture = new TextureLoader().load(require('@/assets/textures/blueMist.jpg'));
     const woodTexture = new TextureLoader().load(require('@/assets/textures/wood.jpg'));
+    const diceFaceTextures = [
+      new TextureLoader().load(require('@/assets/textures/dice/1.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/2.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/3.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/4.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/5.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/6.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/7.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/8.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/9.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/10.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/11.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/12.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/13.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/14.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/15.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/16.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/17.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/18.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/19.jpg')),
+      new TextureLoader().load(require('@/assets/textures/dice/20.jpg')),
+    ]
 
     /**
      * Renderer
@@ -61,6 +83,11 @@ export default function HomeScreen() {
     /**
      * Dice
      */
+    /**
+     * Meshes
+     */
+
+    // Dice
     const diceGeometry = new THREE.IcosahedronGeometry(1)
     const diceMaterial = new THREE.MeshStandardMaterial({
       map: blueMistTexture,
@@ -71,11 +98,48 @@ export default function HomeScreen() {
       roughness: 0.5,
     })
     const dice = new THREE.Mesh(diceGeometry, diceMaterial)
-
     dice.castShadow = true
     dice.position.set(0, 0, 10)
     dice.up.set(0, 0, 1)
     sceneRef.current.add(dice)
+
+    // Dice Faces
+    const dicePositions = dice.geometry.attributes.position.array
+    const dicePoints = []
+    const uvs = new Float32Array([
+      1.0, 0.0,
+      0.5, 1.0,
+      0.0, 0.0,
+    ]);
+
+    const facesGroup = new THREE.Group()
+
+    for (let i = 0; i < dicePositions.length; i += 3) {
+      dicePoints.push(
+        new THREE.Vector3(dicePositions[i], dicePositions[i + 1], dicePositions[i + 2])
+      )
+    }
+    for (let i = 0; i < dicePositions.length / 3; i += 3) {
+      const faceNumber = i / 3 + 1
+      const faceName = faceNumber.toString()
+
+      const material = new THREE.MeshStandardMaterial({
+        map: diceFaceTextures[faceNumber - 1],
+        transparent: true,
+        opacity: 0.6,
+        side: THREE.DoubleSide,
+        metalness: 0.2,
+        roughness: 0.5,
+      })
+      const geometry = new THREE.BufferGeometry()
+      geometry.setFromPoints([dicePoints[i], dicePoints[i + 1], dicePoints[i + 2]])
+      geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+
+      const faceMesh = new THREE.Mesh(geometry, material)
+      faceMesh.name = faceName
+      facesGroup.add(faceMesh)
+    }
+    dice.add(facesGroup)
 
 
     // Table
@@ -109,6 +173,7 @@ export default function HomeScreen() {
     const animate = () => {
       timeoutRef.current = requestAnimationFrame(animate);
 
+      dice.rotation.x += 0.01
       renderer.render(sceneRef.current, cameraRef.current);
 
       gl.endFrameEXP();
@@ -119,7 +184,6 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Text style={{ marginTop: 100, marginLeft: 20, fontWeight: 'bold' }}>3D Dice roll</Text>
       <GLView
         style={{ flex: 1 }}
         onContextCreate={onContextCreate}
